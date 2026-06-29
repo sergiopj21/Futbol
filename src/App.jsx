@@ -103,15 +103,19 @@ const OFFICIAL_THIRD = { id:"M103", hFrom:"RU101", aFrom:"RU102", date:"18 jul" 
 // Enriquece los cruces de dieciseisavos con resultados reales si ya se han jugado
 function enrichWithResults(r32, knockoutMatches) {
   return r32.map(match => {
-    // Buscamos el partido en los resultados de la API por los nombres de los equipos
+    // Match por código TLA exacto de ambos equipos — sin falsos positivos
     const found = knockoutMatches.find(m => {
-      const hMatch = m.home?.toLowerCase().includes(match.h.n.toLowerCase()) ||
-                     match.h.n.toLowerCase().includes(m.homeShort?.toLowerCase()||"");
-      const aMatch = m.away?.toLowerCase().includes(match.a.n.toLowerCase()) ||
-                     match.a.n.toLowerCase().includes(m.awayShort?.toLowerCase()||"");
-      return (hMatch && aMatch) || m.phase === "LAST_32";
+      const hCode = m.homeCode?.toUpperCase();
+      const aCode = m.awayCode?.toUpperCase();
+      const mH = match.h.c.toUpperCase();
+      const mA = match.a.c.toUpperCase();
+      return (hCode===mH && aCode===mA) || (hCode===mA && aCode===mH);
     });
-    if (!found) return { ...match, status:"NS" };
+    // Solo mostramos resultado si el partido está realmente jugado o en directo
+    if (!found || found.status==="SCHEDULED" || found.status==="TIMED" ||
+        found.scoreHome===null || found.scoreHome===undefined) {
+      return { ...match, status:"NS" };
+    }
     return {
       ...match,
       scoreH: found.scoreHome,
@@ -239,7 +243,7 @@ function ConnR({ n }) {
   return <svg width={24} height={h} style={{ flexShrink:0, alignSelf:"flex-start", marginTop:22 }}>{paths}</svg>;
 }
 function ConnMidL({ fromN, toN }) {
-  const h=tH(fromN), srcH=h/fromN, paths=[];
+  const h=tH(8), srcH=h/fromN, paths=[];
   for(let i=0;i<toN;i++){
     const y1=(i*2)*srcH+srcH/2, y2=(i*2+1)*srcH+srcH/2, ym=(y1+y2)/2;
     paths.push(
@@ -251,7 +255,7 @@ function ConnMidL({ fromN, toN }) {
   return <svg width={24} height={h} style={{ flexShrink:0, alignSelf:"flex-start", marginTop:22 }}>{paths}</svg>;
 }
 function ConnMidR({ fromN, toN }) {
-  const h=tH(fromN), srcH=h/fromN, paths=[];
+  const h=tH(8), srcH=h/fromN, paths=[];
   for(let i=0;i<toN;i++){
     const y1=(i*2)*srcH+srcH/2, y2=(i*2+1)*srcH+srcH/2, ym=(y1+y2)/2;
     paths.push(
@@ -275,9 +279,10 @@ function ColHdr({ children, sub, gold=false }) {
   );
 }
 
-function FutureCol({ matches, n }) {
+function FutureCol({ matches, n, totalH }) {
+  const h = totalH || tH(n);
   return (
-    <div style={{ display:"flex", flexDirection:"column", justifyContent:"space-around", height:tH(n), flexShrink:0 }}>
+    <div style={{ display:"flex", flexDirection:"column", justifyContent:"space-around", height:h, flexShrink:0 }}>
       {matches.map(m=><BkFuture key={m.id} hFrom={m.hFrom} aFrom={m.aFrom} label={m.id} date={m.date}/>)}
     </div>
   );
@@ -315,7 +320,7 @@ function ScreenBracket({ enrichedR32 }) {
           {/* OCTAVOS IZQUIERDO */}
           <div style={{ flexShrink:0 }}>
             <ColHdr sub="5–7 jul">8vos</ColHdr>
-            <FutureCol matches={OFFICIAL_R16.slice(0,4)} n={4}/>
+            <FutureCol matches={OFFICIAL_R16.slice(0,4)} n={4} totalH={T8}/>
           </div>
 
           <ConnMidL fromN={4} toN={2}/>
@@ -323,7 +328,7 @@ function ScreenBracket({ enrichedR32 }) {
           {/* CUARTOS IZQUIERDO */}
           <div style={{ flexShrink:0 }}>
             <ColHdr sub="9–10 jul">4tos</ColHdr>
-            <FutureCol matches={OFFICIAL_QF.slice(0,2)} n={2}/>
+            <FutureCol matches={OFFICIAL_QF.slice(0,2)} n={2} totalH={T8}/>
           </div>
 
           <ConnMidL fromN={2} toN={1}/>
@@ -356,14 +361,14 @@ function ScreenBracket({ enrichedR32 }) {
 
           {/* CUARTOS DERECHO */}
           <div style={{ flexShrink:0 }}>
-            <FutureCol matches={OFFICIAL_QF.slice(2,4)} n={2}/>
+            <FutureCol matches={OFFICIAL_QF.slice(2,4)} n={2} totalH={T8}/>
           </div>
 
           <ConnMidR fromN={4} toN={2}/>
 
           {/* OCTAVOS DERECHO */}
           <div style={{ flexShrink:0 }}>
-            <FutureCol matches={OFFICIAL_R16.slice(4,8)} n={4}/>
+            <FutureCol matches={OFFICIAL_R16.slice(4,8)} n={4} totalH={T8}/>
           </div>
 
           <ConnR n={8}/>
@@ -623,4 +628,5 @@ export default function App() {
     </div>
   );
 }
+
 
